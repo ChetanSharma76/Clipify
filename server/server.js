@@ -1,9 +1,11 @@
 import 'dotenv/config';
 import express from 'express'
 import cors from 'cors'
+import bodyParser from 'body-parser';
 import userRouter from './routes/userRoutes.js';
 import connectDB from './configs/mongodb.js';
 import imageRouter from './routes/imageRoutes.js';
+import { clerkWebhooks } from './controllers/UserController.js';
 
 // App Config
 
@@ -12,7 +14,7 @@ const app = express();
 await connectDB()
 
 // Intialize Middlewares
-app.use(express.json())
+app.post('/api/user/webhooks', bodyParser.raw({ type: 'application/json' }), clerkWebhooks);
 
 const allowedOrigins = [
   'https://clipify-frontend.vercel.app',
@@ -24,15 +26,17 @@ const corsOptions = {
     if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(new Error('Not allowed by CORS'))
     }
   },
   optionsSuccessStatus: 200
 };
 
-app.use(cors(corsOptions));
+app.use(cors(corsOptions))
 
 app.use(cors())
+
+app.use(express.json());
 
 // API routes
 app.use('/api/user',userRouter)
