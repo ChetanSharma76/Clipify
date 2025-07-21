@@ -19,7 +19,16 @@ const Navbar = () => {
 
     return (
         <div className='flex items-center justify-between mx-4 py-3 lg:mx-44 '>
-            <Link to={'/'}><img className='w-30 sm:w-44' src={assets.logo} alt="" /></Link>
+            <Link to={'/'} className="flex items-center space-x-3 rtl:space-x-reverse">
+                <img 
+                    className='w-auto h-[35px] sm:h-[40px] md:h-[50px] transition-all duration-300 ease-in-out' 
+                    src={assets.logo} 
+                    alt="Clipify Logo" 
+                />
+                <span className='text-4xl xl:text-5xl 2xl:text-6xl font-bold bg-gradient-to-r from-violet-600 to-fuchsia-500 bg-clip-text text-transparent'>
+                    Clipify
+                </span>
+            </Link>
             {isSignedIn
                 ? <div className='flex items-center gap-2 sm:gap-3'>
                     <button onClick={() => navigate('/buy')} className='flex items-center gap-2 bg-blue-100 px-4 sm:px-7 py-1.5 sm:py-2.5 rounded-full hover:scale-105 transition-all duration-700'>
