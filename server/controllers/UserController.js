@@ -11,64 +11,51 @@ const razorpayInstance = new razorpay({
 
 // API Controller Function to Manage Clerk User with database
 const clerkWebhooks = async (req, res) => {
+  try {
+    const payload = req.body.toString('utf8');
+    const headers = {
+      'svix-id': req.headers['svix-id'],
+      'svix-timestamp': req.headers['svix-timestamp'],
+      'svix-signature': req.headers['svix-signature'],
+    };
 
-    try {
+    const whook = new Webhook(process.env.CLERK_WEBHOOK_SECRET);
+    const evt = whook.verify(payload, headers);
+    const { data, type } = evt;
 
-        // Create a Svix instance with clerk webhook secret.
-        const whook = new Webhook(process.env.CLERK_WEBHOOK_SECRET)
-
-        // Verifying Headers
-        await whook.verify(JSON.stringify(req.body), {
-            "svix-id": req.headers["svix-id"],
-            "svix-timestamp": req.headers["svix-timestamp"],
-            "svix-signature": req.headers["svix-signature"],
-        })
-
-        // Getting Data from request body
-        const { data, type } = req.body
-
-        // Switch Cases for differernt Events
-        switch (type) {
-            case 'user.created': {
-                const userData = {
-                    clerkId: data.id,
-                    email: data.email_addresses[0].email_address,
-                    firstName: data.first_name,
-                    lastName: data.last_name,
-                    photo: data.image_url,
-                }
-                await userModel.create(userData)
-                res.json({})
-                break;
-            }
-
-            case 'user.updated': {
-                const userData = {
-                    email: data.email_addresses[0].email_address,
-                    firstName: data.first_name,
-                    lastName: data.last_name,
-                    photo: data.image_url,
-                }
-                await userModel.findOneAndUpdate({ clerkId: data.id }, userData)
-                res.json({})
-                break;
-            }
-
-            case 'user.deleted': {
-                await userModel.findOneAndDelete({ clerkId: data.id })
-                res.json({})
-                break;
-            }
-
-            default:
-                break;
-        }
-
-    } catch (error) {
-        console.log(error.message)
-        res.json({ success: false, message: error.message })
+    switch (type) {
+      case 'user.created': {
+        await userModel.create({
+          clerkId: data.id,
+          email: data.email_addresses[0].email_address,
+          firstName: data.first_name,
+          lastName: data.last_name,
+          photo: data.image_url,
+        });
+        break;
+      }
+      case 'user.updated': {
+        await userModel.findOneAndUpdate({ clerkId: data.id }, {
+          email: data.email_addresses[0].email_address,
+          firstName: data.first_name,
+          lastName: data.last_name,
+          photo: data.image_url,
+        });
+        break;
+      }
+      case 'user.deleted': {
+        await userModel.findOneAndDelete({ clerkId: data.id });
+        break;
+      }
+      default:
+        console.log("Unhandled event type:", type);
     }
 
+    res.status(200).json({});
+  } catch (err) {
+    console.error("Webhook Error:", err.message);
+    res.status(400).json({ success: false, message: err.message });
+  }
 }
 
 // API Controller function to get user available credits data
