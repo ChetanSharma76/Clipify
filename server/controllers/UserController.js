@@ -14,19 +14,18 @@ const clerkWebhooks = async (req, res) => {
 
     try {
 
-        const whook = new Webhook(process.env.CLERK_WEBHOOK_SECRET);
-        
-        // Use the raw body (as a string) for verification
-        const payload = req.body.toString(); 
+        // Create a Svix instance with clerk webhook secret.
+        const whook = new Webhook(process.env.CLERK_WEBHOOK_SECRET)
 
-        await whook.verify(payload, {
+        // Verifying Headers
+        await whook.verify(JSON.stringify(req.body), {
             "svix-id": req.headers["svix-id"],
             "svix-timestamp": req.headers["svix-timestamp"],
             "svix-signature": req.headers["svix-signature"],
-        });
+        })
 
-        // After verification, parse the string into a JSON object
-        const { data, type } = JSON.parse(payload); 
+        // Getting Data from request body
+        const { data, type } = req.body
 
         // Switch Cases for differernt Events
         switch (type) {
@@ -80,7 +79,7 @@ const userCredits = async (req, res) => {
 
         // Fetching userdata using ClerkId
         const userData = await userModel.findOne({ clerkId })
-        res.json({ success: true, credits: userData.creditBalance})
+        res.json({ success: true, credits: userData.creditBalance })
 
     } catch (error) {
         console.log(error.message)
