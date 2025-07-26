@@ -1,13 +1,12 @@
-import express from 'express'
-import { userCredits, paymentRazorpay, verifyRazorpay, clerkWebhooks} from '../controllers/UserController.js'
-import authUser from '../middlewares/auth.js'
-import bodyParser from 'body-parser';
+import express from 'express';
+import { userCredits, paymentRazorpay, verifyRazorpay } from '../controllers/UserController.js';
+import authUser from '../middlewares/auth.js'; 
+import { clerkMiddleware } from '@clerk/express';
 
-const userRouter = express.Router()
+const userRouter = express.Router();
 
-userRouter.post('/webhooks', bodyParser.raw({ type: 'application/json' }), clerkWebhooks);
-userRouter.get('/credits', authUser, userCredits)
-userRouter.post('/pay-razor', authUser, paymentRazorpay)
-userRouter.post('/verify-razor', verifyRazorpay)
+userRouter.get('/credits', clerkMiddleware(), userCredits);
+userRouter.post('/pay-razor', clerkMiddleware(), paymentRazorpay);
+userRouter.post('/verify-razor', clerkMiddleware(), verifyRazorpay);
 
-export default userRouter
+export default userRouter;

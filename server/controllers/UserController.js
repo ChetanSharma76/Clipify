@@ -9,10 +9,11 @@ const razorpayInstance = new razorpay({
     key_secret: process.env.RAZORPAY_KEY_SECRET,
 })
 
-// API Controller Function to Manage Clerk User with database
 const clerkWebhooks = async (req, res) => {
   try {
-    const payload = req.body.toString('utf8');
+    console.log("Webhook received. Verifying signature...");
+
+    const payload = req.body;
     const headers = {
       'svix-id': req.headers['svix-id'],
       'svix-timestamp': req.headers['svix-timestamp'],
@@ -21,10 +22,13 @@ const clerkWebhooks = async (req, res) => {
 
     const whook = new Webhook(process.env.CLERK_WEBHOOK_SECRET);
     const evt = whook.verify(payload, headers);
+
+    console.log("Webhook verified successfully. Event type:", evt.type);
     const { data, type } = evt;
 
     switch (type) {
       case 'user.created': {
+        console.log("Attempting to create user with Clerk ID:", data.id);
         await userModel.create({
           clerkId: data.id,
           email: data.email_addresses[0].email_address,
@@ -32,28 +36,52 @@ const clerkWebhooks = async (req, res) => {
           lastName: data.last_name,
           photo: data.image_url,
         });
+        console.log("User successfully created in DB:", data.id);
         break;
       }
+
       case 'user.updated': {
-        await userModel.findOneAndUpdate({ clerkId: data.id }, {
-          email: data.email_addresses[0].email_address,
-          firstName: data.first_name,
-          lastName: data.last_name,
-          photo: data.image_url,
-        });
+        console.log("Attempting to update user with Clerk ID:", data.id);
+        const updatedUser = await userModel.findOneAndUpdate(
+          { clerkId: data.id }, 
+          {
+            // Update the fields that can be changed in Clerk
+            firstName: data.first_name,
+            lastName: data.last_name,
+            email: data.email_addresses[0].email_address, 
+            photo: data.image_url,
+          },
+          { new: true } 
+        );
+
+        if (updatedUser) {
+          console.log("User successfully updated in DB:", updatedUser.clerkId);
+        } else {
+          console.warn("Update webhook received, but user not found in DB with Clerk ID:", data.id);
+        }
         break;
       }
+
       case 'user.deleted': {
-        await userModel.findOneAndDelete({ clerkId: data.id });
+        // For delete events, the payload might be smaller, but it will have the ID.
+        console.log("Attempting to delete user with Clerk ID:", data.id);
+        const deletedUser = await userModel.findOneAndDelete({ clerkId: data.id });
+
+        if (deletedUser) {
+          console.log("User successfully deleted from DB:", deletedUser.clerkId);
+        } else {
+          console.warn("Delete webhook received, but user not found in DB with Clerk ID:", data.id);
+        }
         break;
       }
+      
       default:
         console.log("Unhandled event type:", type);
     }
 
-    res.status(200).json({});
+    res.status(200).json({ success: true, message: "Webhook processed successfully." });
   } catch (err) {
-    console.error("Webhook Error:", err.message);
+    console.error("!!! WEBHOOK HANDLER FAILED !!! Error:", err.message);
     res.status(400).json({ success: false, message: err.message });
   }
 }
@@ -61,16 +89,23 @@ const clerkWebhooks = async (req, res) => {
 // API Controller function to get user available credits data
 const userCredits = async (req, res) => {
     try {
+        const { userId } = req.auth;
 
-        const { clerkId } = req.body
+        if (!userId) {
+            return res.status(401).json({ success: false, message: "User not authenticated." });
+        }
+        
+        const userData = await userModel.findOne({ clerkId: userId });
 
-        // Fetching userdata using ClerkId
-        const userData = await userModel.findOne({ clerkId })
-        res.json({ success: true, credits: userData.creditBalance })
+        if (!userData) {
+            return res.status(404).json({ success: false, message: "User not found in our database." });
+        }
+
+        res.json({ success: true, credits: userData.creditBalance });
 
     } catch (error) {
-        console.log(error.message)
-        res.json({ success: false, message: error.message })
+        console.error("Error fetching user credits:", error.message);
+        res.status(500).json({ success: false, message: "An internal server error occurred." });
     }
 }
 
