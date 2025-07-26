@@ -25,7 +25,7 @@ const Navbar = () => {
                     src={assets.logo} 
                     alt="Clipify Logo" 
                 />
-                <span className='text-4xl xl:text-5xl 2xl:text-6xl font-bold bg-gradient-to-r from-violet-600 to-fuchsia-500 bg-clip-text text-transparent'>
+                <span className='text-3xl xl:text-4xl 2xl:text-5xl font-bold bg-gradient-to-r from-violet-600 to-fuchsia-500 bg-clip-text text-transparent'>
                     Clipify
                 </span>
             </Link>
